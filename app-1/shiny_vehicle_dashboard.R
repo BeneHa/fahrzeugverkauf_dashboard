@@ -28,117 +28,132 @@ monthStart <- function(x){
 setwd("~/806 Projekte R/shiny/tutorial/app-1")
 #setwd("C:/Users/bened/OneDrive/Arbeit/Lernen/hersteller_dashboard/fahrzeugverkauf_dashboard/app-1/")
 
-files <- list.files("data", pattern = "fz*")
-full_dat_kba <- data_frame()
-full_dat_hersteller <- data_frame()
+files_old <- read_rds("data/preprocessed/files_old.Rds")
+files_new <- list.files("data", pattern = "fz*")
 
-#Dateien einlesen, ins long format bringen und untereinander haengen
-for (f in files){
-  year <- substr(f, 6, 9)
-  month <- substr(f, 11, 12)
-  filenam <- paste0("data/fz10_", year, "_", month, "_xlsx.xlsx")
-  filenam_old <- paste0("data/fz10_", year, "_", month, "_xls.xls")
+if(identical(files_old, files_new)){
   
-  if(year > 2018){
-    dat_curr_month <- read_xlsx(filenam, sheet = 2, skip = 8)
+  full_dat_hersteller <- read_rds("data/preprocessed/full_dat_hersteller.Rds")
+  full_dat_kba <- read_rds("data/preprocessed/full_dat_kba.Rds")
+  hersteller_vect <- read_rds("data/preprocessed/hersteller_vect.Rds")
+  
+} else {
+  files <- list.files("data", pattern = "fz*")
+  full_dat_kba <- data_frame()
+  full_dat_hersteller <- data_frame()
+  
+  #Dateien einlesen, ins long format bringen und untereinander haengen
+  for (f in files){
+    year <- substr(f, 6, 9)
+    month <- substr(f, 11, 12)
+    filenam <- paste0("data/fz10_", year, "_", month, "_xlsx.xlsx")
+    filenam_old <- paste0("data/fz10_", year, "_", month, "_xls.xls")
+    
+    if(year > 2018){
+      dat_curr_month <- read_xlsx(filenam, sheet = 2, skip = 8)
+    }
+    else if (year == 2018 & month == 12){
+      dat_curr_month <- read_xlsx(filenam, sheet = 2, skip = 8)
+    }
+    else {
+      dat_curr_month <- read_xls(filenam_old, sheet = 2, skip = 8)
+    }
+    
+    
+    names(dat_curr_month) <- c("marke", "modellreihe", "gesamt", "gesamt_", "gesamt_anteil",
+                               "diesel", "diesel_", "diesel_anteil",
+                               "hybrid", "hybrid_", "hybrid_anteil",
+                               "elektro", "elektro_", "elektro_anteil",
+                               "allrad", "allrad_", "allrad_anteil",
+                               "cabrio", "cabrio_", "cabrio_anteil")
+    dat_curr_clean <- dat_curr_month %>%
+      select(-modellreihe, -gesamt_, -gesamt_anteil, -diesel_, -diesel_anteil, -hybrid_, -hybrid_anteil, -elektro_, -elektro_anteil, -allrad_, -allrad_anteil, -cabrio_, -cabrio_anteil) %>%
+      filter(grepl("ZUSAMMEN", marke)) %>%
+      mutate(date = paste0(year, "-", month)) %>%
+      mutate(date = as.yearmon(date)) %>%
+      melt(id = c("marke", "date")) %>%
+      mutate(marke = gsub(" ZUSAMMEN", "", marke)) %>%
+      rename(hersteller = marke, typ = variable)
+    
+    dat_curr_hersteller <- dat_curr_month %>%
+      select(-gesamt_, -gesamt_anteil, -diesel_, -diesel_anteil, -hybrid_, -hybrid_anteil, -elektro_, -elektro_anteil, -allrad_, -allrad_anteil, -cabrio_, -cabrio_anteil) %>%
+      filter(!(is.na(marke) & is.na(modellreihe))) %>%
+      mutate(marke = na.locf(marke), na.rm = T) %>%
+      filter(!grepl("ZUSAMMEN", marke)) %>%
+      mutate(date = paste0(year, "-", month)) %>%
+      mutate(date = as.yearmon(date)) %>%
+      melt(id = c("marke", "modellreihe", "date")) %>%
+      rename(hersteller = marke, typ = variable)
+    
+    
+    full_dat_kba <- rbind(full_dat_kba, dat_curr_clean)
+    full_dat_hersteller <- rbind(full_dat_hersteller, dat_curr_hersteller)
   }
-  else if (year == 2018 & month == 12){
-    dat_curr_month <- read_xlsx(filenam, sheet = 2, skip = 8)
-  }
-  else {
-    dat_curr_month <- read_xls(filenam_old, sheet = 2, skip = 8)
-  }
   
   
-  names(dat_curr_month) <- c("marke", "modellreihe", "gesamt", "gesamt_", "gesamt_anteil",
-                             "diesel", "diesel_", "diesel_anteil",
-                             "hybrid", "hybrid_", "hybrid_anteil",
-                             "elektro", "elektro_", "elektro_anteil",
-                             "allrad", "allrad_", "allrad_anteil",
-                             "cabrio", "cabrio_", "cabrio_anteil")
-  dat_curr_clean <- dat_curr_month %>%
-    select(-modellreihe, -gesamt_, -gesamt_anteil, -diesel_, -diesel_anteil, -hybrid_, -hybrid_anteil, -elektro_, -elektro_anteil, -allrad_, -allrad_anteil, -cabrio_, -cabrio_anteil) %>%
-    filter(grepl("ZUSAMMEN", marke)) %>%
-    mutate(date = paste0(year, "-", month)) %>%
-    mutate(date = as.yearmon(date)) %>%
-    melt(id = c("marke", "date")) %>%
-    mutate(marke = gsub(" ZUSAMMEN", "", marke)) %>%
-    rename(hersteller = marke, typ = variable)
+  full_dat_kba <- full_dat_kba %>%
+    mutate(value = as.numeric(value)) %>%
+    mutate(date = as.Date(date))
   
-  dat_curr_hersteller <- dat_curr_month %>%
-    select(-gesamt_, -gesamt_anteil, -diesel_, -diesel_anteil, -hybrid_, -hybrid_anteil, -elektro_, -elektro_anteil, -allrad_, -allrad_anteil, -cabrio_, -cabrio_anteil) %>%
-    filter(!(is.na(marke) & is.na(modellreihe))) %>%
-    mutate(marke = na.locf(marke), na.rm = T) %>%
-    filter(!grepl("ZUSAMMEN", marke)) %>%
-    mutate(date = paste0(year, "-", month)) %>%
-    mutate(date = as.yearmon(date)) %>%
-    melt(id = c("marke", "modellreihe", "date")) %>%
-    rename(hersteller = marke, typ = variable)
+  full_dat_hersteller <- full_dat_hersteller %>%
+    mutate(value = as.numeric(value)) %>%
+    mutate(modellreihe = as.factor(modellreihe)) %>%
+    mutate(date = as.Date(date))
   
+  hersteller_vect <- c("Alfa Romeo" = "Alfa Romeo",
+                       "Audi" = "Audi",
+                       "Bentley" = "Bentley",
+                       "BMW" = "BMW",
+                       "Cadillac" = "Cadillac",
+                       "Chevrolet" = "Chevrolet",
+                       "Citroen" = "Citroen",
+                       "Dacia" = "Dacia",
+                       "DS" = "DS",
+                       "Ferrari" = "Ferrari",
+                       "Fiat" = "Fiat",
+                       "Ford" = "Ford",
+                       "Honda" = "Honda",
+                       "Hyundai" = "Hyundai",
+                       "Infiniti" = "Infiniti",
+                       "Iveco" = "Iveco",
+                       "Jaguar" = "Jaguar",
+                       "Jeep" = "Jeep",
+                       "Kia" = "Kia",
+                       "Lada" = "Lada",
+                       "Lamborghini" = "Lamborghini",
+                       "Land Rover" = "Land Rover",
+                       "Lexus" = "Lexus",
+                       "Maserati" = "Maserati",
+                       "Mazda" = "Mazda",
+                       "Mercedes" = "Mercedes",
+                       "Mini" = "Mini",
+                       "Mitsubishi" = "Mitsubishi",
+                       "Nissan" = "Nissan",
+                       "Opel" = "Opel",
+                       "Peugeot" = "Peugeot",
+                       "Porsche" = "Porsche",
+                       "Renault" = "Renault",
+                       "Seat" = "Seat",
+                       "Skoda" = "Skoda",
+                       "Smart" = "Smart",
+                       "Ssangyong" = "Ssangyong",
+                       "Subaru" = "Subaru",
+                       "Suzuki" = "Suzuki",
+                       "Tesla" = "Tesla",
+                       "Toyota" = "Toyota",
+                       "Volvo" = "Volvo",
+                       "VW" = "VW",
+                       "Lotus" = "Lotus",
+                       "Rolls Royce" = "Rolls Royce",
+                       "Aston Martin" = "Aston Martin",
+                       "Alpine" = "Alpine",
+                       "Morgan" = "Morgan")
   
-  full_dat_kba <- rbind(full_dat_kba, dat_curr_clean)
-  full_dat_hersteller <- rbind(full_dat_hersteller, dat_curr_hersteller)
+  write_rds(full_dat_hersteller, "data/preprocessed/full_dat_hersteller.Rds")
+  write_rds(full_dat_kba, "data/preprocessed/full_dat_kba.Rds")
+  write_rds(hersteller_vect, "data/preprocessed/hersteller_vect.Rds")
+  write_rds(files, "data/preprocessed/files_old.Rds")
 }
-
-
-full_dat_kba <- full_dat_kba %>%
-  mutate(value = as.numeric(value)) %>%
-  mutate(date = as.Date(date))
-
-full_dat_hersteller <- full_dat_hersteller %>%
-  mutate(value = as.numeric(value)) %>%
-  mutate(modellreihe = as.factor(modellreihe)) %>%
-  mutate(date = as.Date(date))
-
-hersteller_vect <- c("Alfa Romeo" = "Alfa Romeo",
-                     "Audi" = "Audi",
-                     "Bentley" = "Bentley",
-                     "BMW" = "BMW",
-                     "Cadillac" = "Cadillac",
-                     "Chevrolet" = "Chevrolet",
-                     "Citroen" = "Citroen",
-                     "Dacia" = "Dacia",
-                     "DS" = "DS",
-                     "Ferrari" = "Ferrari",
-                     "Fiat" = "Fiat",
-                     "Ford" = "Ford",
-                     "Honda" = "Honda",
-                     "Hyundai" = "Hyundai",
-                     "Infiniti" = "Infiniti",
-                     "Iveco" = "Iveco",
-                     "Jaguar" = "Jaguar",
-                     "Jeep" = "Jeep",
-                     "Kia" = "Kia",
-                     "Lada" = "Lada",
-                     "Lamborghini" = "Lamborghini",
-                     "Land Rover" = "Land Rover",
-                     "Lexus" = "Lexus",
-                     "Maserati" = "Maserati",
-                     "Mazda" = "Mazda",
-                     "Mercedes" = "Mercedes",
-                     "Mini" = "Mini",
-                     "Mitsubishi" = "Mitsubishi",
-                     "Nissan" = "Nissan",
-                     "Opel" = "Opel",
-                     "Peugeot" = "Peugeot",
-                     "Porsche" = "Porsche",
-                     "Renault" = "Renault",
-                     "Seat" = "Seat",
-                     "Skoda" = "Skoda",
-                     "Smart" = "Smart",
-                     "Ssangyong" = "Ssangyong",
-                     "Subaru" = "Subaru",
-                     "Suzuki" = "Suzuki",
-                     "Tesla" = "Tesla",
-                     "Toyota" = "Toyota",
-                     "Volvo" = "Volvo",
-                     "VW" = "VW",
-                     "Lotus" = "Lotus",
-                     "Rolls Royce" = "Rolls Royce",
-                     "Aston Martin" = "Aston Martin",
-                     "Alpine" = "Alpine",
-                     "Morgan" = "Morgan")
-
 
 
 # UI ----------------------------------------------------------------------
