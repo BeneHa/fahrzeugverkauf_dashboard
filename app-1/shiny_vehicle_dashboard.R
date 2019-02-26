@@ -9,11 +9,13 @@ library(stringi)
 library(DT)
 library(scales)
 library(ggrepel)
-
-
+library(shiny.i18n)
 
 # Definitions -------------------------------------------------------------
 
+#Translations
+translator <- Translator$new(translation_csvs_path = "translations/")
+translator$set_translation_language("de")
 
 monthStart <- function(x){
   x <- as.POSIXlt(x)
@@ -23,12 +25,14 @@ monthStart <- function(x){
 
 # Load data ---------------------------------------------------------------
 
-#setwd("~/806 Projekte R/shiny/tutorial/app-1")
+setwd("~/806 Projekte R/shiny/tutorial/app-1")
 #setwd("C:/Users/bened/OneDrive/Arbeit/Lernen/hersteller_dashboard/fahrzeugverkauf_dashboard/app-1/")
 
 files <- list.files("data", pattern = "fz*")
 full_dat_kba <- data_frame()
 full_dat_hersteller <- data_frame()
+
+#Dateien einlesen, ins long format bringen und untereinander haengen
 for (f in files){
   year <- substr(f, 6, 9)
   month <- substr(f, 11, 12)
@@ -140,22 +144,22 @@ hersteller_vect <- c("Alfa Romeo" = "Alfa Romeo",
 # UI ----------------------------------------------------------------------
 
 
-ui <- navbarPage("Fahrzeugverkaeufe",
+ui <- navbarPage(translator$t("Vehicle sales"),
                  
                  
-                 tabPanel("Deutschland",
+                 tabPanel(translator$t("Germany overview"),
                           tags$head(tags$style(".checkbox-inline {margin: 0 !important;}")),
                           
-                          titlePanel("Fahrzeugverkaeufe nach Hersteller"),
+                          titlePanel(translator$t("Vehicle sales by manufacturer")),
                           
                           sidebarLayout(
                             sidebarPanel(width = 3,
-                                         helpText("Auswahl der anzuzeigenden Fahrzeughersteller, Antriebstypen und Zeitraum"),
+                                         helpText(translator$t("Selection of manufacturer / engine type / time slice")),
                                          
                                          fluidRow(
                                            column(12, align = "left",
                                                   checkboxGroupInput("herstellerCheckbox",
-                                                                     h3("Hersteller"),
+                                                                     h3(translator$t("Manufacturer")),
                                                                      inline = T,
                                                                      choices = hersteller_vect,
                                                                      selected = list("Mercedes", "BMW", "Audi"))
@@ -176,7 +180,7 @@ ui <- navbarPage("Fahrzeugverkaeufe",
                                            column(10, align = "left",
                                                   
                                                   sliderInput("zeitraum",
-                                                              h3("Zeitraum"),
+                                                              h3(translator$t("Time slice")),
                                                               min = min(full_dat_kba$date), max = max(full_dat_kba$date),
                                                               value = c(min(full_dat_kba$date), max(full_dat_kba$date)),
                                                               timeFormat = "%b %Y")
@@ -185,32 +189,34 @@ ui <- navbarPage("Fahrzeugverkaeufe",
                             ),
                             
                             mainPanel(
-                              plotOutput("plot"),
+                              plotOutput("overviewPlot"),
                               
                               h3("Details:"),
                               
                               column(11,
-                                     dataTableOutput('table'))
+                                     dataTableOutput('overviewTable')),
+                              
+                              column(11, dataTableOutput('overviewTableCached'))
                               
                               
                             )
                           )
                  ),
                  
-                 tabPanel("Deutschland Details",
+                 tabPanel(translator$t("Details Germany"),
                           tags$head(tags$style(".radio-inline {margin: 0 !important;}")),
                           
                           
-                          titlePanel("Fahrzeugmodelle Detailansicht"),
+                          titlePanel(translator$t("Detailed view of vehicle model series")),
                           
                           sidebarLayout(
                             sidebarPanel(width = 3,
-                                         helpText("Auswahl der anzuzeigenden Fahrzeughersteller, Antriebstypen und Zeitraum"),
+                                         helpText(translator$t("Selection of manufacturer / engine type / time slice")),
                                          
                                          fluidRow(
                                            column(12, align = "left",
                                                   radioButtons("herstellerRadio",
-                                                               h3("Hersteller"),
+                                                               h3(translator$t("Manufacturer")),
                                                                inline = T,
                                                                choices = hersteller_vect,
                                                                selected = "Mercedes")
@@ -221,13 +227,13 @@ ui <- navbarPage("Fahrzeugverkaeufe",
                                            column(5, align = "left",
                                                   
                                                   selectInput("herstellerTypAuswahl",
-                                                              h3("Typ"),
+                                                              h3(translator$t("Type")),
                                                               choices = list("Gesamt" = "gesamt", "Diesel" = "diesel", "Hybrid" = "hybrid",
                                                                              "Elektro" = "elektro", "Allrad" = "allrad", "Cabrio" = "cabrio"), selected = "gesamt")
                                            ),
                                            column(5,
                                                   selectInput("herstellerTopzahl",
-                                                              h3("Anzeigen"),
+                                                              h3(translator$t("Show:")),
                                                               choices = list("Alle" = "50", "Top 5" = "5", "Top 10" = "10"), selected = "50")
                                                   
                                            )
@@ -237,7 +243,7 @@ ui <- navbarPage("Fahrzeugverkaeufe",
                                            column(10, align = "left",
                                                   
                                                   sliderInput("herstellerZeitraum",
-                                                              h3("Zeitraum"),
+                                                              h3(translator$t("Time slice")),
                                                               min = min(full_dat_kba$date), max = max(full_dat_kba$date),
                                                               value = c(min(full_dat_kba$date), max(full_dat_kba$date)),
                                                               timeFormat = "%b %Y")
@@ -245,9 +251,9 @@ ui <- navbarPage("Fahrzeugverkaeufe",
                                          )
                             ),
                             mainPanel(
-                              plotOutput("herstellerPlot"),
+                              plotOutput("detailPlot"),
                               h3("Details:"),
-                              dataTableOutput('herstellerTable'),
+                              dataTableOutput('detailTable'),
                               p("")
                             )
                             
@@ -258,11 +264,11 @@ ui <- navbarPage("Fahrzeugverkaeufe",
                  
                  tabPanel("Infos",
                           
-                          h3("Allgemeine Informationen"),
-                          p("Die Daten stammen vom Kraftfahrzeugbundesamt und sind daher komplett oeffentlich."),
-                          p("Ich gebe keine Garantie auf Richtigkeit der Daten oder Darstellungen oder auf Verfuegbarkeit dieser Webanwendung."),
+                          h3(translator$t("General information")),
+                          p(translator$t("All data comes from the Feder Motor Transport Authority Germany and are completely public.")),
+                          p(translator$t("I do not give warranty for correctness of the data or the visualization or accessibility of this tool.")),
                           uiOutput("githubLink"),
-                          p("Dies ist ein privates Projekt und hat daher keinen Zusammenhang mit meinem Arbeitgeber, der Daimler AG.")
+                          p(translator$t("This is a private project and not related to my employer (Daimler AG)."))
                  )
                  
 )
@@ -272,22 +278,35 @@ ui <- navbarPage("Fahrzeugverkaeufe",
 
 server <- function(input, output) {
   
-  plotData <- reactive({
-    full_dat_kba %>%
+  #Data for overview page
+  overviewData <- reactive({
+    full_dat_kba_filtered <- full_dat_kba %>%
       filter(hersteller %in% toupper(input$herstellerCheckbox), typ == input$typAuswahl,
              date >= input$zeitraum[1], date <= input$zeitraum[2])
     
+    validate(
+      need(nrow(full_dat_kba_filtered) > 0, translator$t("Please select at least one manufacturer."))
+    )
+    full_dat_kba_filtered
+    
   })
   
-  herstellerData <- reactive({
-    full_dat_hersteller %>%
+  #Data for details page
+  detailData <- reactive({
+    full_dat_hersteller_filtered <- full_dat_hersteller %>%
       filter(hersteller == toupper(input$herstellerRadio), typ == input$herstellerTypAuswahl,
              date >= input$herstellerZeitraum[1], date <= input$herstellerZeitraum[2],
              !is.na(modellreihe), !is.na(value))
+    
+    validate(
+      need(nrow(full_dat_hersteller_filtered) > 0, translator$t("No data available. Please select another engine type for this manufacturer."))
+    )
+    full_dat_hersteller_filtered
   })
   
+  #Vector of names of top model series for the current manufacturer based on number of user input
   modellreiheTop <- reactive({
-    herstellerData() %>%
+    detailData() %>%
       group_by(modellreihe) %>%
       summarize(s = sum(value, na.rm = T)) %>%
       arrange(desc(s)) %>%
@@ -297,30 +316,32 @@ server <- function(input, output) {
       pull(modellreihe)
   })
   
-  output$herstellerPlot <- renderPlot({
-    dat <- herstellerData() %>%
+  #Plot of manufacturer details
+  output$detailPlot <- renderPlot({
+    dat <- detailData() %>%
       filter(modellreihe %in% modellreiheTop()) %>%
       group_by(modellreihe) %>%
       mutate(maxdate = max(date)) %>%
       filter(date == maxdate)
     
-    plot_title = paste0("Neufahrzeugzulassungen der Hersteller pro Monat (Deutschland) - ", toupper(input$herstellerTypAuswahl))
-    herstellerData() %>%
+    plot_title = paste0(translator$t("Vehicle registrations per manufacturer per month (Germany) - "), toupper(input$herstellerTypAuswahl))
+    detailData() %>%
       filter(modellreihe %in% modellreiheTop()) %>%
       ggplot(aes(x = date, y = value, col = modellreihe)) + geom_line() + geom_point() +
       geom_text_repel(data = dat, aes(label = modellreihe)) +
       ggtitle(plot_title) +
-      labs(x = "Monat", y = "Anzahl zugelassener Fahrzeuge", colour = "Hersteller") +
+      labs(x = translator$t("Month"), y = translator$t("Number of registered vehicles"), colour = translator$t("Manufacturer")) +
       theme(plot.title = element_text(size = 30), axis.title = element_text(size = 16),
             axis.text = element_text(size = 14),
             legend.title = element_text(size = 16), legend.text = element_text(size = 14)) +
       scale_x_date(date_labels = "%b %Y", date_minor_breaks = "1 month")
   })
   
-  output$herstellerTable <- renderDataTable({
-    
+  #Table of manufacturer details
+  output$detailTable <- renderDataTable({
+      
     datatable(
-      herstellerData() %>%
+      detailData() %>%
         filter(modellreihe %in% modellreiheTop()) %>%
         select(-hersteller) %>%
         filter(!is.na(value)) %>%
@@ -330,39 +351,40 @@ server <- function(input, output) {
     )
   })
   
-  
-  output$plot <- renderPlot({
+  #Manufacturer overview plot
+  output$overviewPlot <- renderPlot({
     
+    plot_title = paste0(translator$t("Vehicle registrations per manufacturer per month (Germany) - "), toupper(input$herstellerTypAuswahl))
     
-    
-    plot_title = paste0("Neufahrzeugzulassungen der Hersteller pro Monat (Deutschland) - ", toupper(input$typAuswahl))
-    
-    ggplot(plotData(), aes(x = date, y = value, col = hersteller)) +
+    ggplot(overviewData(), aes(x = date, y = value, col = hersteller)) +
       geom_line(size = 1.2) + geom_point(size = 4) +
       ggtitle(plot_title) +
-      labs(x = "Monat", y = "Anzahl zugelassener Fahrzeuge", colour = "Hersteller") +
+      labs(x = translator$t("Month"), y = translator$t("Number of registered vehicles"), colour = translator$t("Manufacturer")) +
       theme(plot.title = element_text(size = 30), axis.title = element_text(size = 16),
             axis.text = element_text(size = 14),
             legend.title = element_text(size = 16), legend.text = element_text(size = 14)) +
       scale_x_date(date_labels = "%b %Y", date_minor_breaks = "1 month")
   })
   
-  output$table <- renderDataTable({
+  output$overviewPlotCached <- renderCachedPlot({
+    ggplot(overviewData(), aes(x = date, y = value, col = hersteller)) + geom_line()
+  }, cacheKeyExpr = { overviewData() })
+  
+  #Manufacturer overview table
+  output$overviewTable <- renderDataTable({
     
     datatable(
-      plotData() %>%
+      overviewData() %>%
         select(-typ) %>%
         dcast(hersteller ~ date) %>%
         rename(Hersteller = hersteller),
       options = list(dom = 'lt')
     )
-    
-    
-    
+
   })
   url <- a("Github", href = "https://github.com/BeneHa/fahrzeugverkauf_dashboard")
   output$githubLink <- renderUI({
-    tagList("Link zum Quellcode:", url)
+    tagList(translator$t("Link to source code:"), url)
   })
 }
 
