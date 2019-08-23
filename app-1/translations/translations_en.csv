@@ -1,0 +1,24 @@
+en,de
+Vehicle sales,Fahrzeugverkaeufe
+Germany overview,Deutschland Uebersicht
+Vehicle sales by manufacturer,Fahrzeugverkaeufe nach Hersteller
+Selection of manufacturer / engine type / time slice,Auswahl der anzuzeigenden Hersteller / Antriebstypen / Zeitraum
+Manufacturer,Hersteller
+Type,Typ
+All,Gesamt
+Electric,Elektro
+All-wheel,Allrad
+Time slice,Zeitraum
+Details Germany,Details Deutschland
+Detailed view of vehicle model series,Detailansicht Fahrzeugmodelle
+Show,Zeige
+General information,Allgemeine Informationen
+All data comes from the Feder Motor Transport Authority Germany and are completely public.,Alle Daten stammen vom Kraftfahrzeugbundesamt und sind daher komplett oeffentlich.
+I do not give warranty for correctness of the data or the visualization or accessibility of this tool.,Ich gebe keine Garantie auf Richtigkeit der Daten oder Darstellung oder auf Verfuegbarkeit dieser Anwendung.
+This is a private project and not related to my employer (Daimler AG).,Dies ist ein privates Projekt und steht nicht in Zusammenhang mit meinem Arbeitgeber (Daimler AG).
+Please select at least one manufacturer.,Bitte mindestens einen Hersteller auswaehlen.
+No data available. Please select another engine type for this manufacturer.,Keine Daten verfuegbar. Bitte anderen Antriebstyp fuer diesen Hersteller auswaehlen.
+Vehicle registrations per manufacturer per month (Germany) - ,Neufahrzeugzulassungen der Hersteller pro Monat (Deutschland) - 
+Month,Monat
+Number of registered vehicles,Anzahl zugelassener Fahrzeuge
+Link to source code:,Link zum Quellcode:

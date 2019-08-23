@@ -25,7 +25,7 @@ monthStart <- function(x){
 
 # Load data ---------------------------------------------------------------
 
-setwd("~/806 Projekte R/shiny/tutorial/app-1")
+#setwd("~/806 Projekte R/shiny/tutorial/app-1")
 #setwd("C:/Users/bened/OneDrive/Arbeit/Lernen/hersteller_dashboard/fahrzeugverkauf_dashboard/app-1/")
 
 files_old <- read_rds("data/preprocessed/files_old.Rds")
@@ -369,7 +369,7 @@ server <- function(input, output) {
   #Manufacturer overview plot
   output$overviewPlot <- renderPlot({
     
-    plot_title = paste0(translator$t("Vehicle registrations per manufacturer per month (Germany) - "), toupper(input$herstellerTypAuswahl))
+    plot_title = paste0(translator$t("Vehicle registrations per manufacturer per month (Germany) - "), toupper(input$typAuswahl))
     
     ggplot(overviewData(), aes(x = date, y = value, col = hersteller)) +
       geom_line(size = 1.2) + geom_point(size = 4) +
